@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,5 +25,19 @@ namespace ReportComparison
         {
             InitializeComponent();
         }
+
+        private void DataGrid_AutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
+        {
+            var vm = this.DataContext as ViewModel;
+            if (vm.Model.SelectedProfile.CompareStrategyAppendColumnNames.Contains(e.Column.Header.ToString()))
+            {
+                Style newCellStyle = new Style(typeof(DataGridCell), e.Column.CellStyle);
+                newCellStyle.Setters.Add(new Setter(DataGridCell.ForegroundProperty, new Binding(e.Column.Header.ToString()) { Converter = new RedValues() }));
+                e.Column.CellStyle = newCellStyle;
+
+            }
+        }
     }
+
+
 }

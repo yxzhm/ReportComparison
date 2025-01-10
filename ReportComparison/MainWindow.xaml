@@ -5,8 +5,53 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ReportComparison"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="报表比对工具 - Chengdu Team" Height="450" Width="800">
+    <Window.DataContext>
+        <local:ViewModel/>
+    </Window.DataContext>
+    <Window.Resources>
+        <local:CompareEnable x:Key="CompareEnable"/>
+    </Window.Resources>
     <Grid>
-        
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="20*"/>
+            <ColumnDefinition Width="80*"/>
+            <ColumnDefinition Width="20*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="10*"/>
+            <RowDefinition Height="10*"/>
+            <RowDefinition Height="10*"/>
+            <RowDefinition Height="10*"/>
+            <RowDefinition Height="120*"/>
+            <RowDefinition Height="5*"/>
+        </Grid.RowDefinitions>
+
+        <Label Grid.Column="0" Grid.Row="0" Content="比较类型"/>
+        <ComboBox Grid.Column="1" Grid.Row="0" ItemsSource="{Binding Model.Profiles}" DisplayMemberPath="Name" SelectedItem="{Binding Model.SelectedProfile}"/>
+
+        <Label Grid.Column="0" Grid.Row="1" Content="{Binding Model.SelectedProfile.FirstFileTitle}"/>
+        <TextBox Grid.Column="1" Grid.Row="1" Text="{Binding Model.FirstPath}"/>
+        <Button Grid.Column="2" Grid.Row="1" Content="选择文件" Command="{Binding LeftFileBrowseCmd}"/>
+
+        <Label Grid.Column="0" Grid.Row="2" Content="{Binding Model.SelectedProfile.SecondFileTitle}"/>
+        <TextBox Grid.Column="1" Grid.Row="2" Text="{Binding Model.SecondPath}"/>
+        <Button Grid.Column="2" Grid.Row="2" Content="选择文件" Command="{Binding RightFileBrowseCmd}"/>
+
+        <Button Grid.Column="2" Grid.Row="0" Content="开始比较" Command="{Binding CompareCmd}">
+            <Button.IsEnabled>
+                <MultiBinding Converter="{StaticResource CompareEnable}">
+                    <Binding Path="Model.FirstPath"/>
+                    <Binding Path="Model.SecondPath"/>
+                </MultiBinding>
+            </Button.IsEnabled>
+        </Button>
+
+        <DataGrid Grid.Row="4" Grid.ColumnSpan="3" Margin="10,10,10,10" ItemsSource="{Binding Model.DataView, Mode=OneWay}" 
+                  AutoGenerateColumns="True" 
+                  CanUserAddRows="False"
+                  AutoGeneratingColumn="DataGrid_AutoGeneratingColumn">
+           
+        </DataGrid>
     </Grid>
 </Window>
