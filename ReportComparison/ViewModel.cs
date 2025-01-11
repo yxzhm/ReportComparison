@@ -22,13 +22,10 @@ namespace ReportComparison
     {
         public ViewModel()
         {
-
             _model = new Model();
             Model.Profiles = new ObservableCollection<Profile>(Profile.ReadAllProfiles());
             if (Model.Profiles != null && Model.Profiles.Count > 0)
                 Model.SelectedProfile = Model.Profiles[0];
-
-
         }
 
         private Model _model;
@@ -76,9 +73,9 @@ namespace ReportComparison
 
         private void Compare(Object obj)
         {
+            Profile selectedProfile = Model.SelectedProfile;
             var firstContentList = ReadFile(Model.FirstPath, true);
             var secondContentList = ReadFile(Model.SecondPath, false);
-
 
             var allKeys = GetAllKeys(firstContentList, secondContentList);
             var dt = new DataTable();
@@ -87,49 +84,45 @@ namespace ReportComparison
             foreach (var key in allKeys)
             {
                 var rowContent = new List<string>();
-                List<string> firstContent = new List<string>();
-                
-                List<string> secondContent = new List<string>();
+                List<string> firstGuiContent = new List<string>();
+                List<string> secondGuiContent = new List<string>();
 
+                AddDispalyContentByFileContent(firstContentList, firstGuiContent, key, selectedProfile.FirstFileReadStrategy.ColumnNames.Count);
+                AddDispalyContentByFileContent(secondContentList, secondGuiContent, key, selectedProfile.FirstFileReadStrategy.ColumnNames.Count);
 
-                if (firstContentList.ContainsKey(key))
-                {
-                    firstContent.AddRange(firstContentList[key]);
-                }
-                else
-                {
-                    for (int i = 0; i < Model.SelectedProfile.FirstFileReadStrategy.ColumnNames.Count; i++)
-                    {
-                        firstContent.Add("");
-                    }
-                }
-
-                if (secondContentList.ContainsKey(key))
-                {
-                    secondContent.AddRange(secondContentList[key]);
-                }
-                else
-                {
-                    for (int i = 0; i < Model.SelectedProfile.SecondFileReadStrategy.ColumnNames.Count; i++)
-                    {
-                        secondContent.Add("");
-                    }
-                }
-                rowContent.AddRange(firstContent);
-                rowContent.AddRange(secondContent);
+                rowContent.AddRange(firstGuiContent);
+                rowContent.AddRange(secondGuiContent);
+                bool hasDiff = false;
                 foreach (var calcuateIndex in Model.SelectedProfile.CompareStrategyCalculateColumnIndexs)
                 {
                     decimal firstValue = 0;
+                    bool firstValueParseSucc = false;
                     decimal secondValue = 0;
-                    if (firstContent.Count > calcuateIndex && !string.IsNullOrEmpty(firstContent[calcuateIndex]))
-                        firstValue = decimal.Parse(firstContent[calcuateIndex]);
-                    if (secondContent.Count > calcuateIndex && !string.IsNullOrEmpty(secondContent[calcuateIndex]))
-                        secondValue = decimal.Parse(secondContent[calcuateIndex]);
+                    bool secondValueParseSucc = false;
+                    if (firstGuiContent.Count > calcuateIndex && !string.IsNullOrEmpty(firstGuiContent[calcuateIndex]))
+                    {
+                        firstValueParseSucc = decimal.TryParse(firstGuiContent[calcuateIndex], out firstValue);
+                    }
+                    if (secondGuiContent.Count > calcuateIndex && !string.IsNullOrEmpty(secondGuiContent[calcuateIndex]))
+                    {
+                        secondValueParseSucc = decimal.TryParse(secondGuiContent[calcuateIndex], out secondValue);
+                    }
 
-                    rowContent.Add((firstValue - secondValue).ToString());
+                    if (firstValueParseSucc && secondValueParseSucc)
+                    {
+                        var diffVal = firstValue - secondValue;
+                        rowContent.Add(diffVal.ToString());
+                        if (diffVal.CompareTo(decimal.Zero) != 0)
+                            hasDiff = true;
+                    }
+                    else
+                    {
+                        rowContent.Add("/");
+                        hasDiff = true;
+                    }
                 }
-
-                dt.Rows.Add(rowContent.ToArray());
+                if (!Model.OnlyShowDiff || hasDiff)
+                    dt.Rows.Add(rowContent.ToArray());
             }
             Model.Result = dt;
         }
@@ -141,33 +134,23 @@ namespace ReportComparison
             Profile selectedProfile = Model.SelectedProfile;
             FileReadStrategy fileReadStrategy = firstPath ? selectedProfile.FirstFileReadStrategy : selectedProfile.SecondFileReadStrategy;
 
-            string splitChar = "\t";
-            switch (fileReadStrategy.Splitter)
-            {
-                case Splitter.Tab:
-                    splitChar = "\t"; break;
-                case Splitter.Space:
-                    splitChar = @"\s+"; break;
-                case Splitter.Comma:
-                    splitChar = ","; break;
-            }
+            string splitChar = GetSpiltChar(fileReadStrategy);
 
             var reportData = File.ReadAllText(path, Encoding.GetEncoding(fileReadStrategy.Encoding)).Trim();
 
             var lines = Regex.Split(reportData, "\r\n|\r|\n");
             for (int i = 0; i < lines.Length; i++)
             {
-                // Since the config file is One-Based, here is i+1
+                // Since the IgnoreXXXRowCount is One-Based, here is i+1
                 if (i + 1 <= fileReadStrategy.IgnoreHeadRowCount) continue;
-
                 if (i + 1 > lines.Length - fileReadStrategy.IgnoreTailRowCount) continue;
 
                 var line = lines[i].Trim();
                 if (string.IsNullOrEmpty(line)) continue;
 
                 StringBuilder key = new StringBuilder();
-                int columnIndex = 0;
                 List<string> contents = new List<string>();
+                int columnIndex = 0;
                 foreach (var s in Regex.Split(line, splitChar))
                 {
                     if (fileReadStrategy.KeyColumnIndexs.Contains(columnIndex))
@@ -181,6 +164,22 @@ namespace ReportComparison
                 result.Add(key.ToString(), contents);
             }
             return result;
+        }
+
+        private static string GetSpiltChar(FileReadStrategy fileReadStrategy)
+        {
+            string splitChar = "\t";
+            switch (fileReadStrategy.Splitter)
+            {
+                case Splitter.Tab:
+                    splitChar = "\t"; break;
+                case Splitter.Space:
+                    splitChar = @"\s+"; break;
+                case Splitter.Comma:
+                    splitChar = ","; break;
+            }
+
+            return splitChar;
         }
 
         private List<string> GetAllKeys(Dictionary<string, List<string>> firstContent, Dictionary<string, List<string>> secondContent)
@@ -203,7 +202,17 @@ namespace ReportComparison
                 dt.Columns.Add(name);
         }
 
-
+        private void AddDispalyContentByFileContent(Dictionary<string, List<string>> contentList, List<string> guiContent, string key, int columnCount)
+        {
+            if (contentList.ContainsKey(key))
+            {
+                guiContent.AddRange(contentList[key]);
+            }
+            else
+            {
+                Enumerable.Range(0, columnCount).ToList().ForEach(x => guiContent.Add(""));
+            }
+        }
     }
 
     public class RelayCommand : ICommand

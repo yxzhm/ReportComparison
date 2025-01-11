@@ -31,6 +31,17 @@ namespace ReportComparison
             }
         }
 
+        private bool _onlyShowDiff;
+        public bool OnlyShowDiff
+        {
+            get { return _onlyShowDiff; }
+            set
+            {
+                _onlyShowDiff = value;
+                OnPropertyChanged();
+            }
+        }
+
         private Profile _selectedProfile;
         public Profile SelectedProfile
         {

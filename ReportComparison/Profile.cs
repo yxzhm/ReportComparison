@@ -5,9 +5,9 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Tomlyn.Model;
-using Tomlyn.Syntax;
+
 
 namespace ReportComparison
 {
@@ -22,7 +22,7 @@ namespace ReportComparison
     {
         private FileReadStrategy firstFileReadStrategy;
         private FileReadStrategy secondFileReadStrategy;
-        public Profile(string name, TomlTable table)
+        public Profile(string name, Dictionary<string, List<KeyValuePair<string, string>>> table)
         {
             _name = name;
             _table = table;
@@ -36,8 +36,8 @@ namespace ReportComparison
             get { return _name; }
         }
 
-        private TomlTable _table;
-        public TomlTable TomlTable
+        private Dictionary<string, List<KeyValuePair<string, string>>> _table;
+        public Dictionary<string, List<KeyValuePair<string, string>>> TomlTable
         {
             get { return _table; }
         }
@@ -46,9 +46,7 @@ namespace ReportComparison
         {
             get
             {
-                object obj = "";
-                (TomlTable["GUI"] as TomlTable).TryGetValue(nameof(FirstFileTitle), out obj);
-                return obj.ToString();
+                return GetValue(_table, "GUI", nameof(FirstFileTitle));
             }
         }
 
@@ -56,9 +54,7 @@ namespace ReportComparison
         {
             get
             {
-                object obj = "";
-                (TomlTable["GUI"] as TomlTable).TryGetValue(nameof(SecondFileTitle), out obj);
-                return obj.ToString();
+                return GetValue(_table, "GUI", nameof(SecondFileTitle));
             }
         }
         #endregion
@@ -83,9 +79,8 @@ namespace ReportComparison
         {
             get
             {
-                object obj;
-                (TomlTable["CompareStrategy"] as TomlTable).TryGetValue("AppendColumnNames", out obj);
-                return (obj as TomlArray).Select(x => x.ToString()).ToList();
+                var value = GetValue(_table, "CompareStrategy", "AppendColumnNames");
+                return GetKVStrArray(value);
             }
         }
 
@@ -93,13 +88,56 @@ namespace ReportComparison
         {
             get
             {
-                object obj;
-                (TomlTable["CompareStrategy"] as TomlTable).TryGetValue("CalculateColumnIndexs", out obj);
-                return (obj as TomlArray).Select(x => int.Parse(x.ToString())).ToList();
+                var value = GetValue(_table, "CompareStrategy", "CalculateColumnIndexs");
+                return GetKVIntArray(value);
             }
         }
         #endregion
 
+        public bool Validate()
+        {
+            if (string.IsNullOrEmpty(FirstFileTitle)) return false;
+            if (string.IsNullOrEmpty(SecondFileTitle)) return false;
+
+            if (!ValidateFileReadStrategy(firstFileReadStrategy)) return false;
+            if (!ValidateFileReadStrategy(secondFileReadStrategy)) return false;
+
+            if (CompareStrategyAppendColumnNames == null) return false;
+
+            if (CompareStrategyCalculateColumnIndexs == null || CompareStrategyCalculateColumnIndexs.Count == 0) return false;
+
+            if (CompareStrategyCalculateColumnIndexs.Count != CompareStrategyAppendColumnNames.Count) return false;
+
+            // if the two index are not equivalent, the calcuateColumnIndexs are incorrect
+            if (firstFileReadStrategy.ColumnIndexs.Count!=secondFileReadStrategy.ColumnIndexs.Count) return false;
+
+            if (CompareStrategyCalculateColumnIndexs.Distinct().Count() != CompareStrategyCalculateColumnIndexs.Count) return false;
+
+            // the append index can't larger than index of report files, otherwise can't calulate the two number of report files
+            if (CompareStrategyCalculateColumnIndexs.Any(x => x >= firstFileReadStrategy.ColumnNames.Count)) return false;
+
+            if (CompareStrategyCalculateColumnIndexs.Any(x => x >= secondFileReadStrategy.ColumnNames.Count)) return false;
+
+            return true;
+        }
+
+        private bool ValidateFileReadStrategy(FileReadStrategy fileReadStrategy)
+        {
+            if (fileReadStrategy == null) return false;
+
+            if (string.IsNullOrEmpty(fileReadStrategy.Encoding)) return false;
+
+            if (fileReadStrategy.ColumnNames == null || fileReadStrategy.ColumnIndexs == null) return false;
+
+            if (fileReadStrategy.ColumnNames.Count == 0) return false;
+
+            if (fileReadStrategy.ColumnNames.Count != fileReadStrategy.ColumnIndexs.Count) return false;
+
+            // each index is unique
+            if (fileReadStrategy.ColumnIndexs.Distinct().Count() != fileReadStrategy.ColumnIndexs.Count) return false;
+
+            return true;
+        }
 
         public static List<Profile> ReadAllProfiles()
         {
@@ -108,10 +146,78 @@ namespace ReportComparison
             foreach (FileInfo profileFile in profileFolder.GetFiles())
             {
                 var profileStr = File.ReadAllText(profileFile.FullName);
-                TomlTable model = Tomlyn.Toml.ToModel(profileStr);
-                list.Add(new Profile(profileFile.Name.Replace(".txt", ""), model));
+                var model = new Dictionary<string, List<KeyValuePair<string, string>>>();
+                string key = "";
+                var kvs = new List<KeyValuePair<string, string>>();
+                var lines = Regex.Split(profileStr, "\r\n|\r|\n");
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    var line = lines[i];
+                    if (string.IsNullOrEmpty(line)) continue;
+                    if (line.StartsWith("[") && line.EndsWith("]"))
+                    {
+                        if (i != 0 && !string.IsNullOrEmpty(key)) model[key] = kvs;
+
+                        key = line.Replace("[", "").Replace("]", "");
+                        kvs = new List<KeyValuePair<string, string>>();
+                        continue;
+                    }
+
+                    if (line.Contains("="))
+                    {
+                        var values = line.Split('=');
+                        if (values.Length == 2)
+                        {
+                            var kv = new KeyValuePair<string, string>(values[0], values[1]);
+                            kvs.Add(kv);
+                        }
+                    }
+
+                    if (i == lines.Length - 1)
+                    {
+                        model[key] = kvs;
+                    }
+
+                }
+                var profile = new Profile(profileFile.Name.Replace(".txt", ""), model);
+                if (profile.Validate())
+                    list.Add(profile);
             }
             return list;
+        }
+
+        public static string GetValue(Dictionary<string, List<KeyValuePair<string, string>>> dic, string dicKey, string key)
+        {
+            if (dic == null || string.IsNullOrEmpty(dicKey) || string.IsNullOrEmpty(key)) return null;
+
+            if (!dic.ContainsKey(dicKey)) return null;
+
+            var kvs = dic[dicKey];
+
+            foreach (var kv in kvs)
+            {
+                if (kv.Key.Trim() == key) return kv.Value.Replace("\"", "").Trim();
+            }
+            return null;
+        }
+
+        public static List<string> GetKVStrArray(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return null;
+            List<string> result = new List<string>();
+            foreach (var v in value.Replace("[", "").Replace("]", "").Split(','))
+            {
+                result.Add(v.Replace("\"", "").Trim());
+            }
+            return result;
+        }
+
+        public static List<int> GetKVIntArray(string value)
+        {
+            var list = GetKVStrArray(value);
+            if (list == null) return null;
+
+            return list.Select(x => int.Parse(x)).ToList();
         }
 
 
@@ -126,8 +232,8 @@ namespace ReportComparison
     internal class FileReadStrategy
     {
         private readonly string keyWord;
-        private readonly TomlTable table;
-        public FileReadStrategy(string keyWord, TomlTable table)
+        private readonly Dictionary<string, List<KeyValuePair<string, string>>> table;
+        public FileReadStrategy(string keyWord, Dictionary<string, List<KeyValuePair<string, string>>> table)
         {
             this.keyWord = keyWord;
             this.table = table;
@@ -136,9 +242,7 @@ namespace ReportComparison
         {
             get
             {
-                object obj;
-                (table[keyWord] as TomlTable).TryGetValue("Encoding", out obj);
-                return obj.ToString();
+                return Profile.GetValue(table, keyWord, nameof(Encoding));
             }
         }
 
@@ -146,9 +250,9 @@ namespace ReportComparison
         {
             get
             {
-                object obj;
-                (table[keyWord] as TomlTable).TryGetValue("IgnoreHeadRowCount", out obj);
-                return int.Parse(obj.ToString());
+                var val = Profile.GetValue(table, keyWord, nameof(IgnoreHeadRowCount));
+                if (val == null) return 0;
+                return int.Parse(val);
             }
         }
 
@@ -156,9 +260,9 @@ namespace ReportComparison
         {
             get
             {
-                object obj;
-                (table[keyWord] as TomlTable).TryGetValue("IgnoreTailRowCount", out obj);
-                return int.Parse(obj.ToString());
+                var val = Profile.GetValue(table, keyWord, nameof(IgnoreTailRowCount));
+                if (val == null) return 0;
+                return int.Parse(val);
             }
         }
 
@@ -166,9 +270,8 @@ namespace ReportComparison
         {
             get
             {
-                object obj;
-                (table[keyWord] as TomlTable).TryGetValue("Splitter", out obj);
-                switch (obj.ToString().Trim())
+                var val = Profile.GetValue(table, keyWord, nameof(Splitter));
+                switch (val.Trim())
                 {
                     case "Tab": return Splitter.Tab;
                     case "Space": return Splitter.Space;
@@ -183,9 +286,8 @@ namespace ReportComparison
         {
             get
             {
-                object obj;
-                (table[keyWord] as TomlTable).TryGetValue("ColumnNames", out obj);
-                return (obj as TomlArray).Select(x => x.ToString()).ToList();
+                var val = Profile.GetValue(table, keyWord, nameof(ColumnNames));
+                return Profile.GetKVStrArray(val); ;
             }
         }
 
@@ -193,9 +295,8 @@ namespace ReportComparison
         {
             get
             {
-                object obj;
-                (table[keyWord] as TomlTable).TryGetValue("ColumnIndexs", out obj);
-                return (obj as TomlArray).Select(x => int.Parse(x.ToString())).ToList();
+                var val = Profile.GetValue(table, keyWord, nameof(ColumnIndexs));
+                return Profile.GetKVIntArray(val); ;
             }
         }
 
@@ -204,9 +305,8 @@ namespace ReportComparison
         {
             get
             {
-                object obj;
-                (table[keyWord] as TomlTable).TryGetValue("KeyColumnIndexs", out obj);
-                return (obj as TomlArray).Select(x => int.Parse(x.ToString())).ToList();
+                var val = Profile.GetValue(table, keyWord, nameof(KeyColumnIndexs));
+                return Profile.GetKVIntArray(val); ;
             }
         }
     }

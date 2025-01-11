@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ReportComparison"
         mc:Ignorable="d"
-        Title="报表比对工具 - Chengdu Team" Height="450" Width="800">
+        Title="报表比对工具 - Chengdu Team" Height="600" Width="1000">
     <Window.DataContext>
         <local:ViewModel/>
     </Window.DataContext>
@@ -16,6 +16,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="20*"/>
             <ColumnDefinition Width="80*"/>
+            <ColumnDefinition Width="20*"/>
             <ColumnDefinition Width="20*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -29,6 +30,23 @@
 
         <Label Grid.Column="0" Grid.Row="0" Content="比较类型"/>
         <ComboBox Grid.Column="1" Grid.Row="0" ItemsSource="{Binding Model.Profiles}" DisplayMemberPath="Name" SelectedItem="{Binding Model.SelectedProfile}"/>
+        <Button Grid.Column="2" Grid.Row="0" Content="开始比较" Command="{Binding CompareCmd}">
+            <Button.IsEnabled>
+                <MultiBinding Converter="{StaticResource CompareEnable}">
+                    <Binding Path="Model.FirstPath"/>
+                    <Binding Path="Model.SecondPath"/>
+                </MultiBinding>
+            </Button.IsEnabled>
+        </Button>
+        <CheckBox Grid.Column="4" IsChecked="{Binding Model.OnlyShowDiff, Mode=TwoWay}" Command="{Binding CompareCmd}" >
+            <TextBlock Text="只显示不同" VerticalAlignment="Center"/>
+            <CheckBox.IsEnabled>
+                <MultiBinding Converter="{StaticResource CompareEnable}">
+                    <Binding Path="Model.FirstPath"/>
+                    <Binding Path="Model.SecondPath"/>
+                </MultiBinding>
+            </CheckBox.IsEnabled>
+        </CheckBox>
 
         <Label Grid.Column="0" Grid.Row="1" Content="{Binding Model.SelectedProfile.FirstFileTitle}"/>
         <TextBox Grid.Column="1" Grid.Row="1" Text="{Binding Model.FirstPath}"/>
@@ -38,20 +56,16 @@
         <TextBox Grid.Column="1" Grid.Row="2" Text="{Binding Model.SecondPath}"/>
         <Button Grid.Column="2" Grid.Row="2" Content="选择文件" Command="{Binding RightFileBrowseCmd}"/>
 
-        <Button Grid.Column="2" Grid.Row="0" Content="开始比较" Command="{Binding CompareCmd}">
-            <Button.IsEnabled>
-                <MultiBinding Converter="{StaticResource CompareEnable}">
-                    <Binding Path="Model.FirstPath"/>
-                    <Binding Path="Model.SecondPath"/>
-                </MultiBinding>
-            </Button.IsEnabled>
-        </Button>
 
-        <DataGrid Grid.Row="4" Grid.ColumnSpan="3" Margin="10,10,10,10" ItemsSource="{Binding Model.DataView, Mode=OneWay}" 
+        <DataGrid Grid.Row="4" Grid.ColumnSpan="4" 
+                  Margin="10,10,10,10" 
+                  ItemsSource="{Binding Model.DataView, Mode=OneWay}" 
                   AutoGenerateColumns="True" 
                   CanUserAddRows="False"
-                  AutoGeneratingColumn="DataGrid_AutoGeneratingColumn">
-           
+                  AutoGeneratingColumn="DataGrid_AutoGeneratingColumn"
+                  CanUserDeleteRows="False"
+                  FontSize="20"
+                  >
         </DataGrid>
     </Grid>
 </Window>

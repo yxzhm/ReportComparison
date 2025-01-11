@@ -15,11 +15,11 @@ namespace ReportComparison
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if (value == null) return Brushes.Black;
-            if (string.IsNullOrEmpty(value.ToString())) return Brushes.Black;
+            if (string.IsNullOrEmpty(value.ToString())) return Brushes.Red;
 
             if (value.ToString() == "0" || value.ToString() == "0.00") return Brushes.Black;
 
-            return Brushes.IndianRed;
+            return Brushes.Red;
 
         }
 
