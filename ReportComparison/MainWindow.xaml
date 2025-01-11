@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ReportComparison"
         mc:Ignorable="d"
-        Title="报表比对工具 - Chengdu Team" Height="600" Width="1000">
+        Title="{Binding Model.WinTitle}" Height="600" Width="1000">
     <Window.DataContext>
         <local:ViewModel/>
     </Window.DataContext>
@@ -14,8 +14,8 @@
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="20*"/>
-            <ColumnDefinition Width="80*"/>
+            <ColumnDefinition Width="40*"/>
+            <ColumnDefinition Width="60*"/>
             <ColumnDefinition Width="20*"/>
             <ColumnDefinition Width="20*"/>
         </Grid.ColumnDefinitions>

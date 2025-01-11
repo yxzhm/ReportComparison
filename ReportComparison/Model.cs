@@ -31,6 +31,17 @@ namespace ReportComparison
             }
         }
 
+        private string _winTitle;
+        public string WinTitle
+        {
+            get { return _winTitle; }
+            set
+            {
+                _winTitle = value;
+                OnPropertyChanged();
+            }
+        }
+
         private bool _onlyShowDiff;
         public bool OnlyShowDiff
         {

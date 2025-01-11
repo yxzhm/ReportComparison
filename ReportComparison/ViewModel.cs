@@ -8,6 +8,7 @@ using System.Configuration;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -23,6 +24,8 @@ namespace ReportComparison
         public ViewModel()
         {
             _model = new Model();
+            Version version = Assembly.GetEntryAssembly().GetName().Version;
+            Model.WinTitle = "报表比对工具 - Chengdu Team "+version.ToString();
             Model.Profiles = new ObservableCollection<Profile>(Profile.ReadAllProfiles());
             if (Model.Profiles != null && Model.Profiles.Count > 0)
                 Model.SelectedProfile = Model.Profiles[0];

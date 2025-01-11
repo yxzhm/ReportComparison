@@ -10,7 +10,7 @@ using System.Windows;
 [assembly: AssemblyTitle("ReportComparison")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("CFIT")]
 [assembly: AssemblyProduct("ReportComparison")]
 [assembly: AssemblyCopyright("Copyright ©  2025")]
 [assembly: AssemblyTrademark("")]
