@@ -246,25 +246,6 @@ namespace ReportComparison
             }
         }
 
-        public int IgnoreHeadRowCount
-        {
-            get
-            {
-                var val = Profile.GetValue(table, keyWord, nameof(IgnoreHeadRowCount));
-                if (val == null) return 0;
-                return int.Parse(val);
-            }
-        }
-
-        public int IgnoreTailRowCount
-        {
-            get
-            {
-                var val = Profile.GetValue(table, keyWord, nameof(IgnoreTailRowCount));
-                if (val == null) return 0;
-                return int.Parse(val);
-            }
-        }
 
         public Splitter Splitter
         {

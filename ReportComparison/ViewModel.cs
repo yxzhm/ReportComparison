@@ -25,7 +25,7 @@ namespace ReportComparison
         {
             _model = new Model();
             Version version = Assembly.GetEntryAssembly().GetName().Version;
-            Model.WinTitle = "报表比对工具 - Chengdu Team "+version.ToString();
+            Model.WinTitle = "报表比对工具 - Chengdu Team " + version.ToString();
             Model.Profiles = new ObservableCollection<Profile>(Profile.ReadAllProfiles());
             if (Model.Profiles != null && Model.Profiles.Count > 0)
                 Model.SelectedProfile = Model.Profiles[0];
@@ -144,12 +144,11 @@ namespace ReportComparison
             var lines = Regex.Split(reportData, "\r\n|\r|\n");
             for (int i = 0; i < lines.Length; i++)
             {
-                // Since the IgnoreXXXRowCount is One-Based, here is i+1
-                if (i + 1 <= fileReadStrategy.IgnoreHeadRowCount) continue;
-                if (i + 1 > lines.Length - fileReadStrategy.IgnoreTailRowCount) continue;
-
                 var line = lines[i].Trim();
+                
                 if (string.IsNullOrEmpty(line)) continue;
+                
+                if (!Regex.IsMatch(line, @"^\d")) continue;
 
                 StringBuilder key = new StringBuilder();
                 List<string> contents = new List<string>();
@@ -164,7 +163,8 @@ namespace ReportComparison
 
                     columnIndex++;
                 }
-                result.Add(key.ToString(), contents);
+                if (!result.ContainsKey(key.ToString()))
+                    result.Add(key.ToString(), contents);
             }
             return result;
         }

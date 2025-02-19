@@ -1,0 +1,21 @@
+[GUI]
+FirstFileTitle = "CTBS日报文件"
+SecondFileTitle = "TBS日报文件"
+
+[FirstFileReadStrategy]
+Encoding = "UTF-8"
+Splitter = "Space"
+ColumnNames = ["CTBS科目代码", "CTBS科目名称", "CTBS本日发生额", "CTBS本月累计", "CTBS本年累计"]
+ColumnIndexs = [0, 1, 2, 3, 4]
+KeyColumnIndexs = [0]
+
+[SecondFileReadStrategy]
+Encoding = "GB2312"
+Splitter = "Tab"
+ColumnNames = ["TBS科目代码", "TBS科目名称", "TBS日发生额", "TBS本月累计", "TBS本年累计"]
+ColumnIndexs = [0, 1, 2, 3, 4]
+KeyColumnIndexs = [0]
+
+[CompareStrategy]
+AppendColumnNames = ["日发生额差额", "月累计差额", "年累计差额"]
+CalculateColumnIndexs = [2, 3, 4]
