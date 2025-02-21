@@ -14,6 +14,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -104,11 +105,11 @@ namespace ReportComparison
                     bool secondValueParseSucc = false;
                     if (firstGuiContent.Count > calcuateIndex && !string.IsNullOrEmpty(firstGuiContent[calcuateIndex]))
                     {
-                        firstValueParseSucc = decimal.TryParse(firstGuiContent[calcuateIndex], out firstValue);
+                        firstValueParseSucc = decimal.TryParse(PureDecimalString(firstGuiContent[calcuateIndex]), out firstValue);
                     }
                     if (secondGuiContent.Count > calcuateIndex && !string.IsNullOrEmpty(secondGuiContent[calcuateIndex]))
                     {
-                        secondValueParseSucc = decimal.TryParse(secondGuiContent[calcuateIndex], out secondValue);
+                        secondValueParseSucc = decimal.TryParse(PureDecimalString(secondGuiContent[calcuateIndex]), out secondValue);
                     }
 
                     if (firstValueParseSucc && secondValueParseSucc)
@@ -130,6 +131,11 @@ namespace ReportComparison
             Model.Result = dt;
         }
 
+        private string PureDecimalString(string s)
+        {
+            return s.Replace("\"", "");
+        }
+
         private Dictionary<string, List<string>> ReadFile(string path, bool firstPath)
         {
             Dictionary<string, List<string>> result = new Dictionary<string, List<string>>();
@@ -139,32 +145,40 @@ namespace ReportComparison
 
             string splitChar = GetSpiltChar(fileReadStrategy);
 
-            var reportData = File.ReadAllText(path, Encoding.GetEncoding(fileReadStrategy.Encoding)).Trim();
-
-            var lines = Regex.Split(reportData, "\r\n|\r|\n");
-            for (int i = 0; i < lines.Length; i++)
+            try
             {
-                var line = lines[i].Trim();
-                
-                if (string.IsNullOrEmpty(line)) continue;
-                
-                if (!Regex.IsMatch(line, @"^\d")) continue;
+                var reportData = File.ReadAllText(path, Encoding.GetEncoding(fileReadStrategy.Encoding)).Trim();
 
-                StringBuilder key = new StringBuilder();
-                List<string> contents = new List<string>();
-                int columnIndex = 0;
-                foreach (var s in Regex.Split(line, splitChar))
+
+                var lines = Regex.Split(reportData, "\r\n|\r|\n");
+                for (int i = 0; i < lines.Length; i++)
                 {
-                    if (fileReadStrategy.KeyColumnIndexs.Contains(columnIndex))
-                        key.Append(s + "-");
+                    var line = lines[i].Trim();
 
-                    if (fileReadStrategy.ColumnIndexs.Contains(columnIndex))
-                        contents.Add(s);
+                    if (string.IsNullOrEmpty(line)) continue;
 
-                    columnIndex++;
+                    if (!Regex.IsMatch(line, @"^\d")) continue;
+
+                    StringBuilder key = new StringBuilder();
+                    List<string> contents = new List<string>();
+                    int columnIndex = 0;
+                    foreach (var s in Regex.Split(line, splitChar))
+                    {
+                        if (fileReadStrategy.KeyColumnIndexs.Contains(columnIndex))
+                            key.Append(s + "-");
+
+                        if (fileReadStrategy.ColumnIndexs.Contains(columnIndex))
+                            contents.Add(s);
+
+                        columnIndex++;
+                    }
+                    if (!result.ContainsKey(key.ToString()))
+                        result.Add(key.ToString(), contents);
                 }
-                if (!result.ContainsKey(key.ToString()))
-                    result.Add(key.ToString(), contents);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("open file error." + ex.Message);
             }
             return result;
         }
